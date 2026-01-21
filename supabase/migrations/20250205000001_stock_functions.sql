@@ -1,0 +1,1 @@
+-- 20250205000001_stock_functions.sql

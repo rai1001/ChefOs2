@@ -1,0 +1,1 @@
+-- 20250210000001_analytics_tables.sql
