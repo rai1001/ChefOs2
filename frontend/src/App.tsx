@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/auth/login-page';
 import RegisterPage from './pages/auth/register-page';
 import { ProtectedRoute } from './components/protected-route';
+import { DashboardLayout } from './components/layout/dashboard-layout';
+import IngredientsPage from './pages/inventory/ingredients-page';
 
 function App() {
     return (
@@ -14,12 +16,10 @@ function App() {
 
                     {/* Protected Routes */}
                     <Route element={<ProtectedRoute />}>
-                        <Route path="/" element={
-                            <div className="flex flex-col items-center justify-center h-screen space-y-4">
-                                <h1 className="text-4xl font-bold tracking-tight text-primary">ChefOS Dashboard</h1>
-                                <p className="text-muted-foreground">Welcome to your kitchen operating system.</p>
-                            </div>
-                        } />
+                        <Route element={<DashboardLayout />}>
+                            <Route path="/" element={<div className="p-4">Overview Dashboard (Coming Soon)</div>} />
+                            <Route path="/ingredients" element={<IngredientsPage />} />
+                        </Route>
                     </Route>
 
                     {/* Catch all */}

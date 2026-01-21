@@ -6,7 +6,7 @@ CREATE TYPE organization_role AS ENUM ('ORG_ADMIN', 'AREA_MANAGER', 'COOK', 'SER
 CREATE TYPE subscription_plan AS ENUM ('FREE', 'PRO', 'ENTERPRISE');
 
 -- 2. Organizations
-CREATE TABLE organizations (
+CREATE TABLE IF NOT EXISTS organizations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   slug VARCHAR(255) NULL UNIQUE,
@@ -17,7 +17,7 @@ CREATE TABLE organizations (
 );
 
 -- 3. Users (Profile table linked to Supabase Auth)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email VARCHAR(255) UNIQUE NOT NULL,
   full_name VARCHAR(255),
@@ -26,7 +26,7 @@ CREATE TABLE users (
 );
 
 -- 4. Organization Members
-CREATE TABLE organization_members (
+CREATE TABLE IF NOT EXISTS organization_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -35,10 +35,10 @@ CREATE TABLE organization_members (
   UNIQUE(user_id, organization_id)
 );
 
--- 5. Helper Functions for RLS
-CREATE OR REPLACE FUNCTION auth.user_organization_ids()
+-- 5. Helper Functions for RLS (Moved to PUBLIC schema)
+CREATE OR REPLACE FUNCTION public.get_user_organization_ids()
 RETURNS SETOF UUID AS $$
-  SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
+  SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 -- 6. RLS Policies
@@ -46,6 +46,7 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
 -- Users
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view self" ON users;
 CREATE POLICY "Users can view self"
   ON users FOR SELECT
   USING (auth.uid() = id);
@@ -53,13 +54,15 @@ CREATE POLICY "Users can view self"
 -- Organizations
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Members can view their organizations" ON organizations;
 CREATE POLICY "Members can view their organizations"
   ON organizations FOR SELECT
-  USING (id IN (SELECT auth.user_organization_ids()));
+  USING (id IN (SELECT public.get_user_organization_ids()));
 
 -- Organization Members
 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Members can view members of their organizations" ON organization_members;
 CREATE POLICY "Members can view members of their organizations"
   ON organization_members FOR SELECT
-  USING (organization_id IN (SELECT auth.user_organization_ids()));
+  USING (organization_id IN (SELECT public.get_user_organization_ids()));
